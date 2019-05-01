@@ -1,0 +1,109 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+servers = [
+    {
+        :name => "ubuntu-c",
+        :type => "controller",
+        :box => "ubuntu/xenial64",
+        :box_version => "20180831.0.0",
+        :eth1 => "192.168.56.41",
+        :mem => "1024",
+        :cpu => "2"
+    },
+    {
+        :name => "ubuntu1",
+        :type => "node",
+        :box => "ubuntu/xenial64",
+        :box_version => "20180831.0.0",
+        :eth1 => "192.168.56.42",
+        :mem => "1024",
+        :cpu => "2"
+    },
+    {
+        :name => "ubuntu2",
+        :type => "node",
+        :box => "ubuntu/xenial64",
+        :box_version => "20180831.0.0",
+        :eth1 => "192.168.56.43",
+        :mem => "1024",
+        :cpu => "2"
+    },
+    {
+        :name => "ubuntu3",
+        :type => "node",
+        :box => "ubuntu/xenial64",
+        :box_version => "20180831.0.0",
+        :eth1 => "192.168.56.44",
+        :mem => "1024",
+        :cpu => "2"
+    },
+    {
+        :name => "centos1",
+        :type => "node",
+        :box => "centos/7",
+        :box_version => "1902.01",
+        :eth1 => "192.168.56.45",
+        :mem => "1024",
+        :cpu => "2"
+    },
+    {
+        :name => "centos2",
+        :type => "node",
+        :box => "centos/7",
+        :box_version => "1902.01",
+        :eth1 => "192.168.56.46",
+        :mem => "1024",
+        :cpu => "2"
+    },
+    {
+        :name => "centos3",
+        :type => "node",
+        :box => "centos/7",
+        :box_version => "1902.01",
+        :eth1 => "192.168.56.47",
+        :mem => "1024",
+        :cpu => "2"
+    }
+]
+
+
+$checkAnsible = <<-SCRIPT
+if ! [ -x "$(command -v ansible)" ]; then
+  echo 'Error: ansible is not installed.'
+  echo 'Installing ansible...'
+  apt-get update -y && apt-get install ansible -y
+else
+  loc=$(which ansible)
+  echo "Ansible already installed and available on $loc"
+fi
+SCRIPT
+
+Vagrant.configure("2") do |config|
+
+    servers.each do |opts|
+        config.vm.define opts[:name] do |config|
+
+            config.vm.box = opts[:box]
+            config.vm.box_version = opts[:box_version]
+            config.vm.hostname = opts[:name]
+            config.vm.network :private_network, ip: opts[:eth1]
+
+            config.vm.provider "virtualbox" do |v|
+
+                v.name = opts[:name]
+            	v.customize ["modifyvm", :id, "--groups", "/Vagrant k8 cluster"]
+                v.customize ["modifyvm", :id, "--memory", opts[:mem]]
+                v.customize ["modifyvm", :id, "--cpus", opts[:cpu]]
+
+            end
+
+            if opts[:type] == "controller"
+                config.vm.provision "shell", inline: $checkAnsible
+            else
+                #config.vm.provision "shell", inline: $configureNode
+                config.vm.post_up_message = "Provisioning node.."
+            end
+        end
+    end
+end 
